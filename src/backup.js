@@ -69,10 +69,13 @@ class MemoryBackup {
   }
 
   /**
-   * 生成用户画像
+   * 生成用户画像（过滤系统配置）
    */
   _generateProfile(memoryMd, userMd, memoryFiles) {
     const now = new Date().toISOString();
+
+    // 过滤 MEMORY.md 中的系统配置内容
+    const filteredMemoryMd = this._filterSystemConfig(memoryMd);
 
     return `# 用户画像 - OpenClaw 记忆备份
 
@@ -86,7 +89,7 @@ class MemoryBackup {
 
 ## 📝 MEMORY.md
 
-${memoryMd || '无 MEMORY.md 文件'}
+${filteredMemoryMd || '无 MEMORY.md 文件'}
 
 ---
 
@@ -105,7 +108,70 @@ ${Object.entries(memoryFiles)
 ---
 
 *此文件由 OpenMemClaw 自动生成，可用于迁移到新的 OpenClaw 实例*
+*注：系统配置（API 密钥、模型、渠道等）已过滤，仅保留用户记忆*
 `;
+  }
+
+  /**
+   * 过滤系统配置内容
+   * 只保留用户记忆相关的 Projects 和 Preferences
+   */
+  _filterSystemConfig(content) {
+    if (!content) return content;
+
+    // 提取关键章节
+    const sections = {};
+    
+    // 提取 Projects (直到下一个 ## 开头的章节或文件结尾)
+    const projectsMatch = content.match(/## Projects\n([\s\S]*?)(?=\n## [A-Z]|$)/);
+    if (projectsMatch) {
+      sections.projects = projectsMatch[1].trim();
+    }
+
+    // 提取 Preferences
+    const prefsMatch = content.match(/## Preferences\n([\s\S]*?)(?=\n## [A-Z]|$)/);
+    if (prefsMatch) {
+      sections.preferences = prefsMatch[1].trim();
+    }
+
+    // 提取 User Profile（如果有）
+    const userMatch = content.match(/## User Profile\n([\s\S]*?)(?=\n## [A-Z]|$)/);
+    if (userMatch) {
+      sections.userProfile = userMatch[1].trim();
+    }
+
+    // 提取 Memory Rules（如果有）
+    const rulesMatch = content.match(/## Memory Rules\n([\s\S]*?)(?=\n## [A-Z]|$)/i);
+    if (rulesMatch) {
+      sections.memoryRules = rulesMatch[1].trim();
+    }
+
+    // 提取 Key Decisions（如果有）
+    const decisionsMatch = content.match(/## Key Decisions\n([\s\S]*?)(?=\n## [A-Z]|$)/i);
+    if (decisionsMatch) {
+      sections.keyDecisions = decisionsMatch[1].trim();
+    }
+
+    // 重建过滤后的内容
+    const parts = ['# MEMORY.md - Long-Term Memory (Filtered)'];
+    
+    if (sections.projects) {
+      parts.push('\n## Projects\n', sections.projects);
+    }
+    if (sections.preferences) {
+      parts.push('\n## Preferences\n', sections.preferences);
+    }
+    if (sections.userProfile) {
+      parts.push('\n## User Profile\n', sections.userProfile);
+    }
+    if (sections.memoryRules) {
+      parts.push('\n## Memory Rules\n', sections.memoryRules);
+    }
+    if (sections.keyDecisions) {
+      parts.push('\n## Key Decisions\n', sections.keyDecisions);
+    }
+
+    return parts.join('\n');
   }
 
   /**
