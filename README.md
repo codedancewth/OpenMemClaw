@@ -1,6 +1,6 @@
 # OpenMemClaw 🧠
 
-> OpenClaw 记忆备份与迁移工具 - 简单直接
+> OpenClaw 记忆备份与迁移工具 - 简单、安全
 
 ---
 
@@ -11,8 +11,34 @@
 - 📦 **备份** - 将 OpenClaw 工作区的记忆文件汇总成一个 `user-profile.md`
 - 🔄 **恢复** - 将备份文件恢复到新的 OpenClaw 工作区
 - 🚀 **迁移** - 在不同 OpenClaw 实例之间迁移记忆
+- 🔒 **安全** - 自动过滤敏感信息（API 密钥、密码、配置等）
 
 **不需要复杂的 AI 分析，直接读取现有文件！**
+
+---
+
+## 🔐 安全策略
+
+备份时自动过滤以下内容：
+
+**❌ 移除：**
+- API Keys (`sk-xxx`, `apiKey`)
+- Secrets (`appSecret`, `password`)
+- Tokens (`auth_token`)
+- 配置信息 (App ID, connection_mode, group_policy)
+- Feishu Configuration 章节
+- Security Notes 章节
+- 授权链接中的敏感参数
+
+**✅ 保留：**
+- 用户项目信息 (Projects)
+- 用户偏好 (Preferences)
+- 用户基本信息 (USER.md)
+- 记忆规则 (Memory Rules)
+- 关键决策 (Key Decisions)
+- 日常记忆 (memory/*.md)
+
+**备份文件可安全分享，不包含任何密钥或配置！**
 
 ---
 
