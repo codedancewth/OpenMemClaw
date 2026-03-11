@@ -49,7 +49,7 @@ class MemoryBackup {
   }
 
   /**
-   * 读取 memory/ 目录下的文件
+   * 读取 memory/ 目录下的文件（过滤敏感信息）
    */
   _readMemoryDir() {
     const memoryDir = path.join(this.workspace, 'memory');
@@ -59,7 +59,9 @@ class MemoryBackup {
       const items = fs.readdirSync(memoryDir);
       for (const item of items) {
         if (item.endsWith('.md')) {
-          const content = fs.readFileSync(path.join(memoryDir, item), 'utf-8');
+          let content = fs.readFileSync(path.join(memoryDir, item), 'utf-8');
+          // 过滤敏感信息
+          content = this._filterSensitiveInfo(content);
           files[item] = content;
         }
       }
@@ -114,46 +116,46 @@ ${Object.entries(memoryFiles)
 
   /**
    * 过滤系统配置内容
-   * 只保留用户记忆相关的 Projects 和 Preferences
+   * 策略：只保留用户记忆，移除所有系统配置和敏感信息
    */
   _filterSystemConfig(content) {
     if (!content) return content;
 
-    // 提取关键章节
+    // 1. 首先提取需要的章节
     const sections = {};
     
     // 提取 Projects (直到下一个 ## 开头的章节或文件结尾)
     const projectsMatch = content.match(/## Projects\n([\s\S]*?)(?=\n## [A-Z]|$)/);
     if (projectsMatch) {
-      sections.projects = projectsMatch[1].trim();
+      sections.projects = this._filterSensitiveInfo(projectsMatch[1].trim());
     }
 
     // 提取 Preferences
     const prefsMatch = content.match(/## Preferences\n([\s\S]*?)(?=\n## [A-Z]|$)/);
     if (prefsMatch) {
-      sections.preferences = prefsMatch[1].trim();
+      sections.preferences = this._filterSensitiveInfo(prefsMatch[1].trim());
     }
 
     // 提取 User Profile（如果有）
     const userMatch = content.match(/## User Profile\n([\s\S]*?)(?=\n## [A-Z]|$)/);
     if (userMatch) {
-      sections.userProfile = userMatch[1].trim();
+      sections.userProfile = this._filterSensitiveInfo(userMatch[1].trim());
     }
 
     // 提取 Memory Rules（如果有）
     const rulesMatch = content.match(/## Memory Rules\n([\s\S]*?)(?=\n## [A-Z]|$)/i);
     if (rulesMatch) {
-      sections.memoryRules = rulesMatch[1].trim();
+      sections.memoryRules = this._filterSensitiveInfo(rulesMatch[1].trim());
     }
 
     // 提取 Key Decisions（如果有）
     const decisionsMatch = content.match(/## Key Decisions\n([\s\S]*?)(?=\n## [A-Z]|$)/i);
     if (decisionsMatch) {
-      sections.keyDecisions = decisionsMatch[1].trim();
+      sections.keyDecisions = this._filterSensitiveInfo(decisionsMatch[1].trim());
     }
 
-    // 重建过滤后的内容
-    const parts = ['# MEMORY.md - Long-Term Memory (Filtered)'];
+    // 2. 重建过滤后的内容
+    const parts = ['# MEMORY.md - Long-Term Memory (Clean)'];
     
     if (sections.projects) {
       parts.push('\n## Projects\n', sections.projects);
@@ -172,6 +174,69 @@ ${Object.entries(memoryFiles)
     }
 
     return parts.join('\n');
+  }
+
+  /**
+   * 过滤敏感信息
+   * 移除 API 密钥、密码、配置等敏感数据
+   */
+  _filterSensitiveInfo(content) {
+    if (!content) return content;
+
+    // 敏感信息模式列表
+    const sensitivePatterns = [
+      // API Keys
+      /sk-[a-zA-Z0-9-]+/gi,
+      /api[_-]?key[:\s]*[a-zA-Z0-9-]+/gi,
+      /apiKey[:\s]*["'][^"']+["']/gi,
+      
+      // Secrets
+      /secret[:\s]*[a-zA-Z0-9-]+/gi,
+      /app[_-]?secret[:\s]*["'][^"']+["']/gi,
+      /password[:\s]*[^\s,]+/gi,
+      
+      // Tokens
+      /token[:\s]*[a-zA-Z0-9-]{20,}/gi,
+      /auth[_-]?token[:\s]*[^\s,]+/gi,
+      
+      // 配置信息
+      /App ID[:\s]*[^\s,]+/gi,
+      /connection[_-]?mode/gi,
+      /group[_-]?policy/gi,
+      /dm[_-]?policy/gi,
+      
+      // URL 中的敏感参数
+      /auth\?q=[^)]+/gi,
+    ];
+
+    let filtered = content;
+
+    // 移除敏感模式
+    for (const pattern of sensitivePatterns) {
+      filtered = filtered.replace(pattern, '[REDACTED]');
+    }
+
+    // 移除整行敏感内容
+    const excludeKeywords = [
+      'Feishu Configuration',
+      'Security Notes',
+      'config file permissions',
+      'chmod 600',
+      'elevated tools',
+      'API Key',
+      'App Secret',
+      'App ID',
+      'Auth URL'
+    ];
+
+    const lines = filtered.split('\n');
+    const keptLines = lines.filter(line => {
+      return !excludeKeywords.some(keyword => 
+        new RegExp(keyword, 'i').test(line)
+      );
+    });
+
+    return keptLines.join('\n');
   }
 
   /**
