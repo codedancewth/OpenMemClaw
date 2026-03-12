@@ -117,6 +117,20 @@ ${Object.entries(memoryFiles)
   /**
    * 过滤系统配置内容
    * 策略：只保留用户记忆，移除所有系统配置和敏感信息
+   * 
+   * 保留：
+   * - Projects（项目信息）
+   * - Preferences（用户偏好）
+   * - User Profile（用户画像）
+   * - Memory Rules（记忆规则）
+   * - Key Decisions（关键决策）
+   * 
+   * 移除：
+   * - Feishu Configuration（飞书配置）
+   * - Security Notes（安全笔记）
+   * - 模型配置（model、default_model 等）
+   * - Runtime 信息
+   * - 任何密钥相关内容
    */
   _filterSystemConfig(content) {
     if (!content) return content;
@@ -179,6 +193,15 @@ ${Object.entries(memoryFiles)
   /**
    * 过滤敏感信息
    * 移除 API 密钥、密码、配置等敏感数据
+   * 
+   * 过滤范围：
+   * - API Keys (sk-xxx, apiKey)
+   * - Secrets (appSecret, password)
+   * - Tokens (auth_token)
+   * - 飞书配置 (App ID, connection_mode, group_policy)
+   * - 模型配置 (model, default_model, thinking)
+   * - Runtime 信息
+   * - 授权链接
    */
   _filterSensitiveInfo(content) {
     if (!content) return content;
@@ -205,6 +228,11 @@ ${Object.entries(memoryFiles)
       /group[_-]?policy/gi,
       /dm[_-]?policy/gi,
       
+      // 模型配置
+      /model[:\s]*[a-zA-Z0-9\/-]+/gi,
+      /default[_-]?model[:\s]*[a-zA-Z0-9\/-]+/gi,
+      /thinking[:\s]*(on|off)/gi,
+      
       // URL 中的敏感参数
       /auth\?q=[^)]+/gi,
     ];
@@ -226,7 +254,16 @@ ${Object.entries(memoryFiles)
       'API Key',
       'App Secret',
       'App ID',
-      'Auth URL'
+      'Auth URL',
+      'Runtime:',
+      'channel=',
+      'capabilities=',
+      'agent=',
+      'host=',
+      'repo=',
+      'os=',
+      'node=v',
+      'shell='
     ];
 
     const lines = filtered.split('\n');
